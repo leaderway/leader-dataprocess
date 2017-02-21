@@ -26,6 +26,7 @@ public class SentenceDivide {
 
     private static final String SPLIT_REGX = "[。；？！?!;?!]";
     private static final Logger LOGGER = LoggerFactory.getLogger(SentenceDivide.class);
+    private static final String WORD_FILE_PATH = "./data/sentenceWord.txt";
 
     public static void main(String[] args) throws Exception{
         // 初始化用户自定义词典
@@ -67,7 +68,11 @@ public class SentenceDivide {
         LOGGER.info("正在导出词表");
         SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyyMMddHHmmss");
         String dateStr = simpleDateFormat.format(new Date());
-        FileUtils.writeLines(new File("./data/sentenceWord.txt"), wordList);
+        File wordFile = new File(WORD_FILE_PATH);
+        if (wordFile.exists()) {
+            wordFile.delete();
+        }
+        FileUtils.writeLines(new File(WORD_FILE_PATH), wordList);
         LOGGER.info("导出词表完成");
         LOGGER.info("分句完毕");
     }
