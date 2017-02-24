@@ -336,7 +336,6 @@ public class RelationPatternExtraction {
                 }
             }
 
-
             LOGGER.info("计算概念对的支持度和置信度完成");
             LOGGER.info("开始输出文件");
             FileUtils.writeLines(new File(FORMER_WORD_ROOT_PATH), new ArrayList<Map.Entry<String, Set<String>>>(combineWordFormerRootMap.entrySet()));
