@@ -26,7 +26,7 @@ public class MIConceptExtractionV3 {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MIConceptExtractionV3.class);
     private static final int LIMIT_SIZE = 500;// 每次从数据库取出的数据大小
-    private static final int NGRAMS = 2;//
+    private static final int NGRAMS = 2;//n-grams
     private static final String DATA_SENTENCE_WORD_TXT = "./data/sentenceWord.txt";//  记录词频的文件
 
     private static int FREQ_THRESHOLD = 10;// 组合词词频阈值
@@ -57,6 +57,8 @@ public class MIConceptExtractionV3 {
         if (CollectionUtil.isNotEmpty(sentenceTokenList)) {
             Map<String, Integer> combineWordMap = new TreeMap<String, Integer>();// 保存ngrams组合词的及其词频
             Map<String, Set<Integer>> combineWordArticleMap = new TreeMap<String, Set<Integer>>();// 保存组合词及其所在的文章的id
+            Map<String, Map<Integer, Integer>> combineWordArticleOccurTimesMap = new TreeMap<String, Map<Integer, Integer>>();// 保存组合词及其在所在的文章出现的次数
+            Map<Integer, Integer> articleWordCount = new TreeMap<Integer, Integer>();// 保存文章id及其总词数
             Map<String, Map<String, Integer>> leftWordMapContainer = new TreeMap<String, Map<String, Integer>>();// 保存左词
             Map<String, Map<String, Integer>> rightWordMapContainer = new TreeMap<String, Map<String, Integer>>();// 保持右词
 
@@ -83,9 +85,35 @@ public class MIConceptExtractionV3 {
                     String wordMatch = "";// 匹配到的词语
                     while (matcher.find()) {
                         wordMatch = matcher.group(0);
-                        if (wordMatch.indexOf("<w") != -1) {// 过滤标点符号
+                        if (wordMatch.indexOf("<w") != -1 ) {// 过滤标点符号
                             break;
                         }
+
+                        // 计算当前文章总词数
+                        if (articleWordCount.containsKey(articleId)) {
+                            articleWordCount.put(articleId, articleWordCount.get(articleId) + 1);
+                        } else {
+                            articleWordCount.put(articleId, 1);
+                        }
+                        // 计算所有文档总词数
+                        combineWordCountSum += 1;
+
+                        // 过滤停用词
+                        if (wordMatch.indexOf("<u") != -1
+                                || wordMatch.indexOf("<m") != -1
+                                || wordMatch.indexOf("<d") != -1
+                                || wordMatch.indexOf("<en") != -1
+                                || wordMatch.indexOf("<f") != -1
+                                || wordMatch.indexOf("<b") != -1
+                                || wordMatch.indexOf("<c") != -1
+                                || wordMatch.indexOf("<t") != -1
+                                || wordMatch.indexOf("<p") != -1
+                                || wordMatch.indexOf("<q") != -1
+                                || wordMatch.indexOf("<n") == -1   // 词中不包含有名词
+                                || wordMatch.indexOf("<r") != -1) {
+                            break;
+                        }
+
                         // 记录组合词词频
                         WordUtils.calculateWordCount(combineWordMap, wordMatch);
 
@@ -99,7 +127,22 @@ public class MIConceptExtractionV3 {
                         }
                         combineWordArticleMap.put(wordMatch, articleSet);
 
-                        combineWordCountSum += 1;// 计算总词数
+                        // 保存组合词及其在所在的文章出现的次数
+                        Map<Integer, Integer> combineWordArticleOccurTimes = new HashMap<Integer, Integer>();
+                        if (combineWordArticleOccurTimesMap.containsKey(wordMatch)) {
+                            combineWordArticleOccurTimes = combineWordArticleOccurTimesMap.get(wordMatch);
+                            // 是否存在词语在当前文章出现的次数
+                            if (combineWordArticleOccurTimes.containsKey(articleId)) {
+                                int occurTime = combineWordArticleOccurTimes.get(articleId);
+                                combineWordArticleOccurTimes.put(articleId, occurTime + 1);
+                            } else {
+                                combineWordArticleOccurTimes.put(articleId, 1);
+                            }
+                        } else {
+                            combineWordArticleOccurTimes.put(articleId, 1);
+                        }
+                        combineWordArticleOccurTimesMap.put(wordMatch, combineWordArticleOccurTimes);
+
                         System.out.println(wordMatch);
                         break;// 只获取匹配到的第一个
                     }
@@ -156,13 +199,14 @@ public class MIConceptExtractionV3 {
             }
 
             Map<String, Double> miMap = new TreeMap<String, Double>();// 存储计算的信息的Map
-            Map<String, Double> combineWordTFIDF = new TreeMap<String, Double>();// 存储组合词的tf-idf值
             for (Map.Entry<String, Integer> combineEntry : combineWordMap.entrySet()) {
                 String combineWord = combineEntry.getKey();
                 int combineWordFreq = combineEntry.getValue();
                 double pngram = combineWordFreq * 1.0d / combineWordCountSum;
                 StringBuilder builder = new StringBuilder();
-                builder.append(combineWord).append(" P(ngram)=").append(pngram);
+                //builder.append(combineWord).append(" P(ngram)=").append(pngram);
+                builder.append(combineWord).append(" ").append(combineWordFreq);
+                builder.append(" ").append(pngram);
 
                 List<String> combineWordsList = WordUtils.getCombineWordsList(combineWord);
                 int wordFreqSum = 0;// 单个词语词频总和
@@ -171,15 +215,23 @@ public class MIConceptExtractionV3 {
                     // 计算词语出现的概率
                     int wordFreq = Integer.parseInt(wordCountMap.get(word));// tf:词频
                     double pword = wordFreq * 1.0d / wordCountSum;
-                    builder.append(" P(").append(word).append(")=").append(pword);
+                    //builder.append(" P(").append(word).append(")=").append(pword);
                     pwords *= pword;
                 }
 
                 // 计算tf-idf, 公式：tf * log(N/df)
                 Set<Integer> articleSet = combineWordArticleMap.get(combineWord);
                 int combineWordDF = articleSet.size();
-                double tfIdf = pngram * MathUtils.log(articleCount * 1.0d / combineWordDF, 2.0d);
-                builder.append(" tiidf:").append(tfIdf);
+                double tf = 0.0d;
+                for (Map.Entry<Integer, Integer> articleOccurTimes : combineWordArticleOccurTimesMap.get(combineWord).entrySet()) {
+                    int articleOccurTime = articleOccurTimes.getValue();
+                    int articleId = articleOccurTimes.getKey();
+                    int articleWordCountSum = articleWordCount.get(articleId);
+                    tf += articleOccurTime * 1.0d / articleWordCountSum;
+                }
+                double tfIdf = tf * MathUtils.log(articleCount * 1.0d / combineWordDF, 2.0d);
+                //builder.append(" tiidf:").append(tfIdf);
+                builder.append(" ").append(tfIdf);
 
                 // 计算互信息， 公式：f(mn)/(f(m)+f(n)-f(mn))
                 //float mi = combineWordFreq * 1.0f / (wordFreqSum* 1.0f - combineWordFreq) ;
@@ -187,7 +239,7 @@ public class MIConceptExtractionV3 {
                 // 计算互信息， 公式：P(x,y)*log(P(x,y)/(P(x)*P(y)))
                 double mi = pngram * MathUtils.log(pngram / pwords, 2.0d);
 
-                // 计算左右信息熵 公式：-P(aW|W)*log(1/P(aW|W))
+                // 计算左右信息熵 公式：-P(aW|W)*log(P(aW|W))
                 int leftWordCount = 0;// 以组合词为左边的词的数量
                 int rightWordCount = 0;// 以组合词为右边的词的数量
                 double leftE = 0.0d;// 左信息熵
@@ -202,7 +254,8 @@ public class MIConceptExtractionV3 {
                         int leftWordEntryValue = leftWordEntry.getValue();
                         leftWordCount += leftWordEntryValue;
                         double paW = leftWordEntryValue * 1.0d / combineWordLeftRightCountSum;
-                        leftE += (-paW * MathUtils.log(1 / paW, 2.0d));
+                        //leftE += (-paW * MathUtils.log(1 / paW, 2.0d));
+                        leftE += (-paW * MathUtils.log(paW, 2.0d));
                     }
                 }
 
@@ -212,12 +265,14 @@ public class MIConceptExtractionV3 {
                         int rightWordEntryValue = rightWordEntry.getValue();
                         rightWordCount += rightWordEntryValue;
                         double pWb = rightWordEntryValue * 1.0d / combineWordLeftRightCountSum;
-                        rightE += (-pWb * MathUtils.log(1 / pWb, 2.0d));
+                        rightE += (-pWb * MathUtils.log(pWb, 2.0d));
                     }
                 }
 
-                builder.append(" L:").append(leftWordCount).append(" LE:").append(leftE);
-                builder.append(" R:").append(rightWordCount).append(" RE:").append(rightE);
+                //builder.append(" L:").append(leftWordCount).append(" LE:").append(leftE);
+                builder.append(" ").append(leftWordCount).append(" ").append(leftE);
+                //builder.append(" R:").append(rightWordCount).append(" RE:").append(rightE);
+                builder.append(" ").append(rightWordCount).append(" ").append(rightE);
 
                 System.out.println("处理完成==" + combineWord + "已处理：" + miMap.size());
                 miMap.put(builder.toString(), mi);

@@ -37,7 +37,7 @@ public class MapUtils {
     }
 
     /**
-     * /将Map按照词频降序排序
+     * /将Map按照某一比率降序排序
      * @param map
      * @return
      */

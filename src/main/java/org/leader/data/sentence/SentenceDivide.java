@@ -2,6 +2,7 @@ package org.leader.data.sentence;
 
 import org.ansj.domain.Result;
 import org.ansj.domain.Term;
+import org.ansj.splitWord.analysis.DicAnalysis;
 import org.ansj.splitWord.analysis.ToAnalysis;
 import org.apache.commons.io.FileUtils;
 import org.leader.data.enmu.SentencePostion;
@@ -31,7 +32,7 @@ public class SentenceDivide {
     public static void main(String[] args) throws Exception{
         // 初始化用户自定义词典
         UserLibraryUtils.insertWords("./library/default.dic");
-        String sql = "SELECT id, title, content FROM t_article WHERE id > ? limit 500";
+        String sql = "SELECT id, title, content FROM t_article WHERE id > ? limit 1000";
         String sqlInsert = "INSERT INTO t_sentence (sentence, sentenceToken, articleId, position) VALUES (?, ?, ?, ?)";
 
         int index = 0;
@@ -83,7 +84,7 @@ public class SentenceDivide {
      * @return
      */
     private static String handleString(String sentence) {
-        return sentence.replaceAll("　", "").replaceAll("\\(中国电子商务研究中心讯\\)", "").replaceAll("&nbsp;", "").replaceAll("[。；？！?!;?!][”》]", "”").replaceAll("\\s+", "").trim();
+        return sentence.replaceAll("　", "").replaceAll("\\(中国电子商务研究中心讯\\)", "").replaceAll("\\(中国电子商务研究中心\\)", "").replaceAll("&nbsp;", "").replaceAll("[。；？！?!;?!][”》]", "”").replaceAll("\\s+", "").trim();
     }
 
     /**
@@ -119,7 +120,8 @@ public class SentenceDivide {
      * @return
      */
     private static List<Term> analysisSentence(String sentence) {
-        Result result = ToAnalysis.parse(sentence);
+        //Result result = ToAnalysis.parse(sentence);
+        Result result = DicAnalysis.parse(sentence);
         //Result result = NlpAnalysis.parse(sentence);
         return result.getTerms();
     }

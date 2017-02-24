@@ -1,6 +1,7 @@
 package org.leader.data.concept;
 
 import org.apache.commons.io.FileUtils;
+import org.leader.data.util.MapUtils;
 import org.leader.framework.helper.DatabaseHelper;
 import org.leader.framework.util.CollectionUtil;
 import org.slf4j.Logger;
@@ -67,11 +68,12 @@ public class PatternConceptExtraction {
                 }
             }
 
-            List<String> combineWordList = new ArrayList<String>();
-            for (Map.Entry<String, Integer> combineWordMapEntry : combineWordMap.entrySet()) {
-                String combineWordStr = combineWordMapEntry.getKey() + "  " + combineWordMapEntry.getValue();
-                combineWordList.add(combineWordStr);
-            }
+            //List<String> combineWordList = new ArrayList<String>();
+            //for (Map.Entry<String, Integer> combineWordMapEntry : combineWordMap.entrySet()) {
+            //    String combineWordStr = combineWordMapEntry.getKey() + "  " + combineWordMapEntry.getValue();
+            //    combineWordList.add(combineWordStr);
+            //}
+            List<String> combineWordList = MapUtils.sortIntegerMap(combineWordMap);
 
             LOGGER.info("正在导出规则匹配词");
             SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyyMMddHHmmss");
