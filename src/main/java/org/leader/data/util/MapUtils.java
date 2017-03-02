@@ -52,7 +52,7 @@ public class MapUtils {
 
         List<String> list = new ArrayList<String>();
         for (Map.Entry<String, Double> entry : entryList) {
-            String entryStr = entry.getKey() + "  " + entry.getValue();
+            String entryStr = entry.getKey() + " " + entry.getValue();
             list.add(entryStr);
         }
         return list;

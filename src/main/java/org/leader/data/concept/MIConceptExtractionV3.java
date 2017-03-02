@@ -198,14 +198,15 @@ public class MIConceptExtractionV3 {
                 wordCountSum += Integer.parseInt(wordCount);
             }
 
-            Map<String, Double> miMap = new TreeMap<String, Double>();// 存储计算的信息的Map
+            Map<String, String> miMap = new TreeMap<String, String>();// 存储计算的信息的Map
+            Map<Integer, Integer> articleMaxTf = new TreeMap<Integer, Integer>();// 存储文章iD及改文章最大的TF值，用作tf-idf标准化计算
             for (Map.Entry<String, Integer> combineEntry : combineWordMap.entrySet()) {
                 String combineWord = combineEntry.getKey();
                 int combineWordFreq = combineEntry.getValue();
                 double pngram = combineWordFreq * 1.0d / combineWordCountSum;
                 StringBuilder builder = new StringBuilder();
                 //builder.append(combineWord).append(" P(ngram)=").append(pngram);
-                builder.append(combineWord).append(" ").append(combineWordFreq);
+                builder.append(" ").append(combineWordFreq);
                 builder.append(" ").append(pngram);
 
                 List<String> combineWordsList = WordUtils.getCombineWordsList(combineWord);
@@ -227,7 +228,13 @@ public class MIConceptExtractionV3 {
                     int articleOccurTime = articleOccurTimes.getValue();
                     int articleId = articleOccurTimes.getKey();
                     int articleWordCountSum = articleWordCount.get(articleId);
-                    tf += articleOccurTime * 1.0d / articleWordCountSum;
+                    double tfSingleArticle = articleOccurTime * 1.0d / articleWordCountSum;
+                    // 存储某个文章中最大的tf,用于标准化tf-idf计算
+                    if (articleMaxTf.containsKey(articleId) && (articleOccurTime > articleMaxTf.get(articleId))
+                            || !articleMaxTf.containsKey(articleId)) {
+                        articleMaxTf.put(articleId, articleOccurTime);
+                    }
+                    tf += tfSingleArticle;
                 }
                 double tfIdf = tf * MathUtils.log(articleCount * 1.0d / combineWordDF, 2.0d);
                 //builder.append(" tiidf:").append(tfIdf);
@@ -273,21 +280,50 @@ public class MIConceptExtractionV3 {
                 builder.append(" ").append(leftWordCount).append(" ").append(leftE);
                 //builder.append(" R:").append(rightWordCount).append(" RE:").append(rightE);
                 builder.append(" ").append(rightWordCount).append(" ").append(rightE);
+                builder.append(" ").append(mi);
 
                 System.out.println("处理完成==" + combineWord + "已处理：" + miMap.size());
-                miMap.put(builder.toString(), mi);
+                miMap.put(combineWord, builder.toString());
+            }
+
+            Map<String, Double> standardTFIDF = new TreeMap<String, Double>();
+            for (Map.Entry<String, Integer> combineEntry : combineWordMap.entrySet()) {
+                String combineWord = combineEntry.getKey();
+                // 计算标准化tf-idf, 公式：tf/tfMax * log(N/df + 1)
+                Set<Integer> articleSet = combineWordArticleMap.get(combineWord);
+                int combineWordDF = articleSet.size();
+                double tf = 0.0d;
+                for (Map.Entry<Integer, Integer> articleOccurTimes : combineWordArticleOccurTimesMap.get(combineWord).entrySet()) {
+                    int articleOccurTime = articleOccurTimes.getValue();
+                    int articleId = articleOccurTimes.getKey();
+                    // 标准化
+                    double tfSingleArticle = articleOccurTime * 1.0d / articleMaxTf.get(articleId);
+                    tf += tfSingleArticle;
+                }
+                double tfIdf = tf * MathUtils.log(articleCount * 1.0d / combineWordDF + 1, 2.0d);
+                standardTFIDF.put(combineWord, tfIdf);
+            }
+
+            Map<String, Double> resultMap = new TreeMap<>();
+            for (Map.Entry<String, Double> standardTFIDFEntry : standardTFIDF.entrySet()) {
+                String combineWord = standardTFIDFEntry.getKey();
+                String resultString = miMap.get(combineWord);
+                resultMap.put(combineWord + " " + resultString, standardTFIDFEntry.getValue());
             }
 
             // 将Map按照词频降序排序
             List<String> combineWordList = MapUtils.sortIntegerMap(combineWordMap);
-            // 将Map按照互信息降序排序
-            List<String> miList = MapUtils.sortDoubleMap(miMap);
+            // 将Map按照tf-idf降序排序
+            List<String> resultList =  MapUtils.sortDoubleMap(resultMap);
+            // 将Map按照标准化tfidf降序排序
+            List<String> standardTFIDFList = MapUtils.sortDoubleMap(standardTFIDF);
 
             LOGGER.info("正在导出规则匹配词");
             SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyyMMddHHmmss");
             String dateStr = simpleDateFormat.format(new Date());
             FileUtils.writeLines(new File("./data/miextraction-" + NGRAMS + "grams-" + dateStr + ".txt"), combineWordList);
-            FileUtils.writeLines(new File("./data/midata-" + NGRAMS + "grams-" + dateStr + ".txt"), miList);
+            FileUtils.writeLines(new File("./data/midata-" + NGRAMS + "grams-" + dateStr + ".txt"), resultList);
+            FileUtils.writeLines(new File("./data/standardTFIDF-" + NGRAMS + "grams-" + dateStr + ".txt"), standardTFIDFList);
             LOGGER.info("导出规则匹配词完成");
         }
     }
