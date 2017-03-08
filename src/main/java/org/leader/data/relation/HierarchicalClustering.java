@@ -125,28 +125,23 @@ public class HierarchicalClustering {
         LOGGER.info("构建向量空间模型完成,最大的相似度是：{}，词组为{}",firstMaxSim, maxSimWordPair);
     }
 
+    /**
+     * 层次聚类
+     * @param conceptWordSet
+     * @param afterClusterSingleVSMMap
+     * @param vsmSingleMap
+     * @param simThreshold
+     * @throws Exception
+     */
     private static void hieCluster(Set<String> conceptWordSet, Map<String, Double> afterClusterSingleVSMMap, Map<String, Double> vsmSingleMap, double simThreshold) throws Exception{
-        String maxSimCombieWordPair = findMaxSim(afterClusterSingleVSMMap, simThreshold);// 第一次查找最大的相似度的两个概念
-        if (maxSimCombieWordPair == null) {
-            System.out.println("层次聚类结束");
-            FileUtils.writeLines(new File(CLUSTER_RESULT_PATH), conceptWordSet);
-            return;// 结束执行
-        }
-        Set<String> clusterSet = new HashSet<String>();// 保存聚成的类
-        String[] clusterWordArray = maxSimCombieWordPair.split("\\|");
-        CollectionUtils.addAll(clusterSet, clusterWordArray);
-        //CollectionUtils.removeAll(conceptWordSet, clusterSet);// 将已经聚成一类的组合词删除
-        conceptWordSet.removeAll(clusterSet);
-        String deleteWord = "";
-        for (String word : clusterSet) {
-            deleteWord += word;
-            conceptWordSet.remove(deleteWord);
-        }
-        conceptWordSet.add(maxSimCombieWordPair);// 将组合词作为一簇放入到词表中
 
         // 计算已经聚成的簇与剩余的词语的相似度，使用簇中每个词语与其他词语的平均相似度
         Map<String, Double> afterClusterVSMMap = new TreeMap<String, Double>();// 聚类后重新构建空间向量模型
         afterClusterSingleVSMMap = new HashMap<>();// 聚类后重新构建去重空间向量模型
+        double maxSim = 0.0;
+        String maxSimCombineWord = "";
+        String maxSimCombineWordOther = "";
+
         for (String combineWord : conceptWordSet) {
             for (String combineWordOther : conceptWordSet) {
 
@@ -180,35 +175,35 @@ public class HierarchicalClustering {
                     }
                 }
                 double simAvg = simSum / (combineWordArray.length * combineWordOtherArray.length);// 平均相似度
+
+                if (simAvg != 1.0d && simAvg > maxSim) {
+                    maxSim = simAvg;
+                    maxSimCombineWord = combineWord;
+                    maxSimCombineWordOther = combineWordOther;
+                }
                 afterClusterVSMMap.put(vsmName, simAvg);
                 afterClusterVSMMap.put(vsmNameReverse, simAvg);
                 afterClusterSingleVSMMap.put(vsmName, simAvg);
             }
+        }
+        conceptWordSet.remove(maxSimCombineWord);
+        conceptWordSet.remove(maxSimCombineWordOther);
+        conceptWordSet.add(maxSimCombineWord + "|" + maxSimCombineWordOther);// 将组合词作为一簇放入到词表中
+        System.out.println("相似度最大的组合词对" + maxSimCombineWord + "|" + maxSimCombineWordOther + " 相似度为：" + maxSim);
+        if (maxSim < simThreshold) {
+            System.out.println("层次聚类结束");
+            Set<String> clusterResult = new HashSet<String>();
+            for (String cluster : conceptWordSet) {
+                if (cluster.indexOf("|") != -1) {
+                    clusterResult.add(cluster);
+                }
+            }
+            FileUtils.writeLines(new File(CLUSTER_RESULT_PATH), clusterResult);
+            return;// 结束执行
         }
         // 递归调用
         hieCluster(conceptWordSet, afterClusterSingleVSMMap, vsmSingleMap, simThreshold);
 
     }
 
-    /**
-     * 查找相似度最大的组合词对
-     * @param vsmMap
-     * @return
-     */
-    private static String findMaxSim(Map<String, Double> vsmMap, double simThreshold) throws Exception{
-        String maxSimCombineWordPair = "";
-        double simMax = 0.0;
-        for (Map.Entry<String, Double> vsmMapEntry : vsmMap.entrySet()) {
-            double sim = vsmMapEntry.getValue();
-            if ( sim != 1.0d && sim > simMax) {
-                simMax = vsmMapEntry.getValue();
-                maxSimCombineWordPair = vsmMapEntry.getKey();
-            }
-        }
-        if (simMax <= simThreshold) {
-            return null;
-        }
-        System.out.println("相似度最大的组合词对" + maxSimCombineWordPair + " 相似度为：" + simMax);
-        return maxSimCombineWordPair;
-    }
 }
