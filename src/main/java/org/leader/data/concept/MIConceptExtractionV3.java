@@ -29,6 +29,7 @@ public class MIConceptExtractionV3 {
     private static final int NGRAMS = 2;//n-grams
     private static final String DATA_SENTENCE_WORD_TXT = "./data/sentenceWord.txt";//  记录词频的文件
 
+
     private static int FREQ_THRESHOLD = 10;// 组合词词频阈值
     private static double LEFTE_THRESHOLD = 10;// 组合词左信息熵阈值
     private static double RIGHTE_THRESHOLD = 10;// 组合词右信息熵阈值
@@ -108,6 +109,9 @@ public class MIConceptExtractionV3 {
                                 || wordMatch.indexOf("<c") != -1
                                 || wordMatch.indexOf("<t") != -1
                                 || wordMatch.indexOf("<p") != -1
+                                || wordMatch.indexOf("是") != -1
+                                || wordMatch.indexOf("让") != -1
+                                || wordMatch.indexOf("有") != -1
                                 || wordMatch.indexOf("<q") != -1
                                 || wordMatch.indexOf("<n") == -1   // 词中不包含有名词
                                 || wordMatch.indexOf("<r") != -1) {
@@ -286,7 +290,9 @@ public class MIConceptExtractionV3 {
                 miMap.put(combineWord, builder.toString());
             }
 
-            Map<String, Double> standardTFIDF = new TreeMap<String, Double>();
+            // 计算标准化tf-idf
+            Map<String, Double> standardTFIDF = new TreeMap<String, Double>();// 保存组合词及其标准TF-IDF
+            Map<String, Map<Integer, Double>> combineWordSingleArticleTFIDF = new TreeMap<String, Map<Integer, Double>>();// 保存组合词及其在各篇文章中的TF-IDF值，供层次聚类使用
             for (Map.Entry<String, Integer> combineEntry : combineWordMap.entrySet()) {
                 String combineWord = combineEntry.getKey();
                 // 计算标准化tf-idf, 公式：tf/tfMax * log(N/df + 1)
@@ -298,6 +304,16 @@ public class MIConceptExtractionV3 {
                     int articleId = articleOccurTimes.getKey();
                     // 标准化
                     double tfSingleArticle = articleOccurTime * 1.0d / articleMaxTf.get(articleId);
+
+                    // 将组合词在各篇文章中的TF-IDF值保存起来，以供提取概念间分类关系时层次聚类使用
+                    Map<Integer, Double> singleArticleTFIDF = new TreeMap<Integer, Double>();
+                    if (combineWordSingleArticleTFIDF.containsKey(combineWord)) {
+                        singleArticleTFIDF = combineWordSingleArticleTFIDF.get(combineWord);
+                    }
+                    singleArticleTFIDF.put(articleId, tfSingleArticle);
+                    combineWordSingleArticleTFIDF.put(combineWord, singleArticleTFIDF);
+
+                    // 计算总的标准化tf
                     tf += tfSingleArticle;
                 }
                 double tfIdf = tf * MathUtils.log(articleCount * 1.0d / combineWordDF + 1, 2.0d);
@@ -311,6 +327,21 @@ public class MIConceptExtractionV3 {
                 resultMap.put(combineWord + " " + resultString, standardTFIDFEntry.getValue());
             }
 
+            // 保存组合词及其在每篇文章的tf-idf，用于概念间分类关系层次聚类
+            List<String> combineWordSingleArticleTFIDFList = new ArrayList<String>();
+            for (Map.Entry<String, Map<Integer, Double>> combineWordSingleArticleTFIDFMapEntry : combineWordSingleArticleTFIDF.entrySet()) {
+                String combineWord = combineWordSingleArticleTFIDFMapEntry.getKey();
+                Map<Integer, Double> singleArticleTFIDFMap = combineWordSingleArticleTFIDFMapEntry.getValue();
+                StringBuilder stringBuilder = new StringBuilder();
+                stringBuilder.append(combineWord).append("-");
+                for (Map.Entry<Integer, Double> singleArticleTFIDFMapEntry : singleArticleTFIDFMap.entrySet()) {
+                    int articleId = singleArticleTFIDFMapEntry.getKey();
+                    double tfidf = singleArticleTFIDFMapEntry.getValue();
+                    stringBuilder.append(articleId).append(":").append(tfidf).append(" ");
+                }
+                combineWordSingleArticleTFIDFList.add(stringBuilder.toString());
+            }
+
             // 将Map按照词频降序排序
             List<String> combineWordList = MapUtils.sortIntegerMap(combineWordMap);
             // 将Map按照tf-idf降序排序
@@ -318,12 +349,15 @@ public class MIConceptExtractionV3 {
             // 将Map按照标准化tfidf降序排序
             List<String> standardTFIDFList = MapUtils.sortDoubleMap(standardTFIDF);
 
+
+
             LOGGER.info("正在导出规则匹配词");
             SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyyMMddHHmmss");
             String dateStr = simpleDateFormat.format(new Date());
             FileUtils.writeLines(new File("./data/miextraction-" + NGRAMS + "grams-" + dateStr + ".txt"), combineWordList);
             FileUtils.writeLines(new File("./data/midata-" + NGRAMS + "grams-" + dateStr + ".txt"), resultList);
             FileUtils.writeLines(new File("./data/standardTFIDF-" + NGRAMS + "grams-" + dateStr + ".txt"), standardTFIDFList);
+            FileUtils.writeLines(new File("./data/combineWordSingleArticleTFIDF.txt"), combineWordSingleArticleTFIDFList);
             LOGGER.info("导出规则匹配词完成");
         }
     }

@@ -61,11 +61,11 @@ public class TestRegex {
         //    System.out.println(matcherCW.group(0));
         //}
 
-        int regexIndex = 0;
-        String sentence = text;
-        String lastProcessSentence;// 上一次处理的句子
-        Map<String, Map<String, Integer>> leftWordMapContainer = new TreeMap<String, Map<String, Integer>>();// 保存左词
-        Map<String, Map<String, Integer>> rightWordMapContainer = new TreeMap<String, Map<String, Integer>>();// 保持右词
+        //int regexIndex = 0;
+        //String sentence = text;
+        //String lastProcessSentence;// 上一次处理的句子
+        //Map<String, Map<String, Integer>> leftWordMapContainer = new TreeMap<String, Map<String, Integer>>();// 保存左词
+        //Map<String, Map<String, Integer>> rightWordMapContainer = new TreeMap<String, Map<String, Integer>>();// 保持右词
         //Map<String, Integer> leftWordMap = new HashMap<String, Integer>();
         //Map<String, Integer> rightWordMap = new HashMap<String, Integer>();
 
@@ -117,6 +117,12 @@ public class TestRegex {
         //    System.out.println("==========");
         //    regexIndex = sentence.indexOf("><") + 1;
         //}
+
+        String[] afterSplit = "sentence".split("\\|");
+        for (String s : afterSplit) {
+            System.out.println(s);
+        }
+        System.out.println(afterSplit.length);
 
 
     }

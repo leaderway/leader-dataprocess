@@ -1,6 +1,7 @@
 package org.leader.data.relation;
 
 import org.apache.commons.io.FileUtils;
+import org.apache.commons.io.LineIterator;
 import org.leader.data.util.MapUtils;
 import org.leader.data.util.MathUtils;
 import org.leader.framework.helper.DatabaseHelper;
@@ -22,15 +23,16 @@ public class RelationPatternExtraction {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(RelationPatternExtraction.class);
     private static final String PATTERN_EXTRACTION_WORD_PATH = "./data/patternextraction20170223154514.txt";// 规则匹配得到的词语的文件
-    private static final String CONCEPT_PAIR_WORD_INTER_PATH = "./data/conceptPairInter.txt";// 概念对之间的词语文件
-    private static final String CONCEPT_PAIR_WORD_SUPORT_PATH = "./data/conceptPairSupport.txt";// 概念对支持度文件
-    private static final String CONCEPT_PAIR_WORD_CONFIDENCE_PATH = "./data/conceptPairConfidence.txt";// 概念对置信度文件
-    private static final String FORMER_WORD_ROOT_PATH = "./data/formerWordRoot.txt";// 前缀词根及其词语文件
-    private static final String FORMER_WORD_ROOT_FILTER_PATH = "./data/formerWordRootFilter.txt";// 筛选后前缀词根及其词语文件
-    private static final String AFTER_WORD_ROOT_PATH = "./data/afterWordRoot.txt";// 后缀词根及其词语文件
-    private static final String AFTER_WORD_ROOT_FILTER_PATH = "./data/afterWordRootFilter.txt";// 筛选后后缀词根及其词语文件
-    private static final String CONCEPT_PAIR_WORD_VERB_PMI_PATH = "./data/conceptVerbPMI.txt";// 概念对与动词点互信息文件
-    private static final String CONCEPT_PAIR_WORD_VERB_FILTER_PATH = "./data/conceptVerbFilter.txt";// 概念对与动词经过筛选后的文件
+    private static final String CONCEPT_PAIR_WORD_INTER_PATH = "./data/relation/conceptPairInter.txt";// 概念对之间的词语文件
+    private static final String CONCEPT_PAIR_WORD_SUPORT_PATH = "./data/relation/conceptPairSupport.txt";// 概念对支持度文件
+    private static final String CONCEPT_PAIR_WORD_CONFIDENCE_PATH = "./data/relation/conceptPairConfidence.txt";// 概念对置信度文件
+    private static final String FORMER_WORD_ROOT_PATH = "./data/relation/formerWordRoot.txt";// 前缀词根及其词语文件
+    private static final String FORMER_WORD_ROOT_FILTER_PATH = "./data/relation/formerWordRootFilter.txt";// 筛选后前缀词根及其词语文件
+    private static final String AFTER_WORD_ROOT_PATH = "./data/relation/afterWordRoot.txt";// 后缀词根及其词语文件
+    private static final String AFTER_WORD_ROOT_FILTER_PATH = "./data/relation/afterWordRootFilter.txt";// 筛选后后缀词根及其词语文件
+    private static final String CONCEPT_PAIR_WORD_VERB_PMI_PATH = "./data/relation/conceptVerbPMI.txt";// 概念对与动词点互信息文件
+    private static final String CONCEPT_PAIR_WORD_VERB_FILTER_PATH = "./data/relation/conceptVerbFilter.txt";// 概念对与动词经过筛选后的文件
+    private static final String WORD_TFIDF_PATH = "./data/combineWordSingleArticleTFIDF.txt";//  记录词语及其TFIDF的文件
 
     private static final int PATTERN_EXTRACTION_WORD_COUNT_THRESHOLD = 15;// 规则匹配得到的词语抽取阈值
     private static final double MI_EXTRACTION_WORD_MI_THRESHOLD = 0.00032651390174099563;// 基于统计方法得到的词语抽取阈值
@@ -44,14 +46,14 @@ public class RelationPatternExtraction {
         Set<String> conceptWordSet = new HashSet<>();// 保存候选概念的set
 
         // 从规则匹配得到的词语的文件中获取超过阈值的词语
-        Map<String, String> patternExtractionWordMap = MapUtils.getMapFromFile(PATTERN_EXTRACTION_WORD_PATH, "\\s+");
-        for (Map.Entry<String, String> patternExtractionWordEntry : patternExtractionWordMap.entrySet()) {
-            int patternExtractionWordCount = Integer.parseInt(patternExtractionWordEntry.getValue());
-            if (patternExtractionWordCount >= PATTERN_EXTRACTION_WORD_COUNT_THRESHOLD) {
-                String patternExtractionWord = patternExtractionWordEntry.getKey();
-                conceptWordSet.add(patternExtractionWord);
-            }
-        }
+        //Map<String, String> patternExtractionWordMap = MapUtils.getMapFromFile(PATTERN_EXTRACTION_WORD_PATH, "\\s+");
+        //for (Map.Entry<String, String> patternExtractionWordEntry : patternExtractionWordMap.entrySet()) {
+        //    int patternExtractionWordCount = Integer.parseInt(patternExtractionWordEntry.getValue());
+        //    if (patternExtractionWordCount >= PATTERN_EXTRACTION_WORD_COUNT_THRESHOLD) {
+        //        String patternExtractionWord = patternExtractionWordEntry.getKey();
+        //        conceptWordSet.add(patternExtractionWord);
+        //    }
+        //}
 
         // 从基于统计方法得到的词语文件中获取超过阈值的词语
         String sqlMiword = "SELECT * FROM `t_combineword` WHERE mi >= ?";
@@ -162,6 +164,9 @@ public class RelationPatternExtraction {
                                 || wordMatch.indexOf("<c") != -1
                                 || wordMatch.indexOf("<t") != -1
                                 || wordMatch.indexOf("<p") != -1
+                                || wordMatch.indexOf("是") != -1
+                                || wordMatch.indexOf("让") != -1
+                                || wordMatch.indexOf("有") != -1
                                 || wordMatch.indexOf("<q") != -1
                                 || wordMatch.indexOf("<n") == -1   // 词中不包含有名词
                                 || wordMatch.indexOf("<r") != -1) {
@@ -336,10 +341,35 @@ public class RelationPatternExtraction {
                 }
             }
 
+            //// 使用层次聚类进行概念分类关系抽取
+            //File combineWordSingleArticleTFIDFFile = FileUtils.getFile(WORD_TFIDF_PATH);
+            //if (combineWordSingleArticleTFIDFFile.exists()) {
+            //    LineIterator lineIterator = FileUtils.lineIterator(combineWordSingleArticleTFIDFFile);
+            //    Map<String, Map<Integer, Double>> combineWordSingleArticleTFIDFMap = new TreeMap<String, Map<Integer, Double>>();// 保存组合词及其在每篇文章中的TFIDF值
+            //    while (lineIterator.hasNext()) {
+            //        String line = lineIterator.next();
+            //        String[] combineWordSingleArticleTFIDFArray = line.split("-");
+            //        String combineWord = combineWordSingleArticleTFIDFArray[0];// 组合词
+            //
+            //        String[] singleArticleTFIDFArray = combineWordSingleArticleTFIDFArray[1].split(" ");
+            //        for (String singleArticleTFIDF : singleArticleTFIDFArray) {
+            //            Map<Integer, Double> singleArticleTFIDFMap = new HashMap<Integer, Double>();// 保存每篇文章的id及词语在此文章的TFIDF
+            //            String[] articleTFIDFArray = singleArticleTFIDF.split(":");
+            //            int articleId = Integer.parseInt(articleTFIDFArray[0]);
+            //            double tfidf = Double.parseDouble(articleTFIDFArray[1]);
+            //            if (combineWordSingleArticleTFIDFMap.containsKey(combineWord)) {
+            //                singleArticleTFIDFMap = combineWordSingleArticleTFIDFMap.get(combineWord);
+            //            }
+            //            singleArticleTFIDFMap.put(articleId, tfidf);
+            //            combineWordSingleArticleTFIDFMap.put(combineWord, singleArticleTFIDFMap);
+            //        }
+            //    }
+            //}
+
             LOGGER.info("计算概念对的支持度和置信度完成");
             LOGGER.info("开始输出文件");
             FileUtils.writeLines(new File(FORMER_WORD_ROOT_PATH), new ArrayList<Map.Entry<String, Set<String>>>(combineWordFormerRootMap.entrySet()));
-            FileUtils.writeLines(new File(FORMER_WORD_ROOT_FILTER_PATH), new ArrayList<Map.Entry<String, Set<String>>>(combineWordAfterRootFilterMap.entrySet()));
+            FileUtils.writeLines(new File(FORMER_WORD_ROOT_FILTER_PATH), new ArrayList<Map.Entry<String, Set<String>>>(combineWordFormerRootFilterMap.entrySet()));
             FileUtils.writeLines(new File(AFTER_WORD_ROOT_PATH), new ArrayList<Map.Entry<String, Set<String>>>(combineWordAfterRootMap.entrySet()));
             FileUtils.writeLines(new File(AFTER_WORD_ROOT_FILTER_PATH), new ArrayList<Map.Entry<String, Set<String>>>(combineWordAfterRootFilterMap.entrySet()));
             FileUtils.writeLines(new File(CONCEPT_PAIR_WORD_INTER_PATH), new ArrayList<Map.Entry<String, Set<String>>>(conceptPairInterMap.entrySet()));
