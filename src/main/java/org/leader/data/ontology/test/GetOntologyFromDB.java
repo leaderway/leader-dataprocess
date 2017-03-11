@@ -59,6 +59,7 @@ public class GetOntologyFromDB {
                 model.getProperty(relationshipUri, "childOf"),
                 model.getResource(familyUri+"dotty")));
 
+
         //model.add(model.createStatement(model.getResource(familyUri+"edward"),
         //        model.getProperty(relationshipUri, "childOf"),
         //        model.getResource(familyUri+"dotty")));

@@ -6,7 +6,6 @@ import org.leader.framework.helper.DatabaseHelper;
 import org.leader.framework.util.CollectionUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import sun.management.VMManagement;
 
 import java.io.File;
 import java.util.*;
@@ -24,13 +23,13 @@ public class HierarchicalClustering {
     private static final String VSM_PATH = "./data/combineWordVSM.txt";//  记录词语向量空间模型
     private static final String CLUSTER_RESULT_PATH = "./data/JULEIcombineWordVSM.txt";//  记录聚类后词语向量空间模型
     private static final double MI_EXTRACTION_WORD_MI_THRESHOLD = 0.00032651390174099563;// 基于统计方法得到的词语抽取阈值
-    private static final double CLUSTER_THRESHOLD = 0.05;// 层次聚类相似度阈值
+    private static final double CLUSTER_THRESHOLD = 0.08;// 层次聚类相似度阈值
 
     public static void main(String[] args) throws Exception{
         Set<String> conceptWordSet = new HashSet<>();// 保存候选概念的set
         // 从基于统计方法得到的词语文件中获取超过阈值的词语
-        String sqlMiword = "SELECT * FROM `t_combineword` WHERE mi >= ?";
-        List<Map<String, Object>> miExtractionWordList = DatabaseHelper.executeQuery(sqlMiword, MI_EXTRACTION_WORD_MI_THRESHOLD);
+        String sqlMiword = "SELECT * FROM `t_combineWord` WHERE wordCount >= 10 AND rightE >=0.000396016776165127 AND leftE >=0.0004230207956862797 AND mi >= 0.00016506750489751965 AND tfidfStand >= 12.475611660899148 ";
+        List<Map<String, Object>> miExtractionWordList = DatabaseHelper.executeQuery(sqlMiword);
         for (Map<String, Object> miExtractionWordMap : miExtractionWordList) {
             String miExtractionWord = String.valueOf(miExtractionWordMap.get("word"));
             conceptWordSet.add(miExtractionWord);
@@ -188,7 +187,7 @@ public class HierarchicalClustering {
         if (maxSim < simThreshold) {
             System.out.println("层次聚类结束");
             Set<String> clusterResult = findParentConcept(vsmSingleMap, conceptWordSet);
-            FileUtils.writeLines(new File(CLUSTER_RESULT_PATH), clusterResult);
+            //FileUtils.writeLines(new File(CLUSTER_RESULT_PATH), clusterResult);
             return;// 结束执行
         }
         // 递归调用

@@ -42,4 +42,22 @@ public class WordUtils {
         }
         return combineWordsList;
     }
+
+    /**
+     * 抽取出无词性标签的词语
+     * @param tagWord
+     * @return
+     */
+    public static String getWordWithOutTags(String tagWord) {
+        StringBuilder stringBuilder = new StringBuilder();
+        String regexWord = "<[^>]+?>([^<>]+?)</[^>]+?>";
+        Pattern patternWord = Pattern.compile(regexWord);
+        Matcher matcherWord = patternWord.matcher(tagWord);
+        while (matcherWord.find()) {
+            for (int i = 1; i <= matcherWord.groupCount(); i++) {
+                stringBuilder.append(matcherWord.group(i));
+            }
+        }
+        return stringBuilder.toString();
+    }
 }

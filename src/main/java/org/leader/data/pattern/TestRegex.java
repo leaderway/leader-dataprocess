@@ -20,18 +20,32 @@ import java.util.regex.Pattern;
 public class TestRegex {
     public static void main(String[] args) {
         String text = "<nR>吃饭</nR><b>吃饭b</b><n>吃饭2</n><n>吃饭3</n><wb>吃饭b2</wb><a1>吃饭3</a1><b>吃饭b2</b>";
+        String textMI = "<nR>吃饭</nR><b>吃饭b</b>";
 
         String regex = "<[an]\\S*?>([^<>]+?)</[an]\\S*?><b>([^<>]+?)</b>";
-        String regexMI = "(<[^>]+?>([^<>]+?)</[^>]+?>){2}";
-        String regexCombineWord = "<[^>]+?>[^<>]+?</[^>]+?>";
+        String regexMI = "(<[^>]+?>([^<>]+?)</[^>]+?>){2,}";
+        String regexCombineWord = "(<[^>]+?>([^<>]+?)</[^>]+?>){2}";
+        String regexWord = "<[^>]+?>([^<>]+?)</[^>]+?>";
 
         Pattern pattern = Pattern.compile(regex);
-        Pattern patternMI = Pattern.compile(regexMI);
+        Pattern patternMI = Pattern.compile(regex);
+        Pattern patternWord = Pattern.compile(regexWord);
         Pattern patternCW = Pattern.compile(regexCombineWord);
 
         Matcher matcher = pattern.matcher(text);
-        Matcher matcherMI = patternMI.matcher(text);
+        Matcher matcherMI = patternMI.matcher(textMI);
         Matcher matcherCW = patternCW.matcher(text);
+        Matcher matcherWord = patternWord.matcher(textMI);
+        Matcher matcherCombineWord = patternCW.matcher(textMI);
+
+        while (matcherWord.find()) {
+            for (int i = 1; i <= matcherWord.groupCount(); i++) {
+                System.out.println(matcherWord.group(i));
+            }
+            //System.out.println(matcherMI.group(1));
+            //System.out.println(matcherMI.group(2));
+        }
+
 
         //while (matcher.find()) {
         //    System.out.println(matcher.group(0));
@@ -118,11 +132,11 @@ public class TestRegex {
         //    regexIndex = sentence.indexOf("><") + 1;
         //}
 
-        String[] afterSplit = "sentence".split("\\|");
-        for (String s : afterSplit) {
-            System.out.println(s);
-        }
-        System.out.println(afterSplit.length);
+        //String[] afterSplit = "sentence".split("\\|");
+        //for (String s : afterSplit) {
+        //    System.out.println(s);
+        //}
+        //System.out.println(afterSplit.length);
 
 
     }

@@ -56,8 +56,8 @@ public class RelationPatternExtraction {
         //}
 
         // 从基于统计方法得到的词语文件中获取超过阈值的词语
-        String sqlMiword = "SELECT * FROM `t_combineword` WHERE mi >= ?";
-        List<Map<String, Object>> miExtractionWordList = DatabaseHelper.executeQuery(sqlMiword, MI_EXTRACTION_WORD_MI_THRESHOLD);
+        String sqlMiword = "SELECT * FROM `t_combineWord` WHERE wordCount >= 10 AND rightE >=0.000396016776165127 AND leftE >=0.0004230207956862797 AND mi >= 0.00016506750489751965 AND tfidfStand >= 12.475611660899148 ";
+        List<Map<String, Object>> miExtractionWordList = DatabaseHelper.executeQuery(sqlMiword, null);
         for (Map<String, Object> miExtractionWordMap : miExtractionWordList) {
             String miExtractionWord = String.valueOf(miExtractionWordMap.get("word"));
             conceptWordSet.add(miExtractionWord);
@@ -337,7 +337,7 @@ public class RelationPatternExtraction {
                 double confidence = confidenceMap.get(conceptPair);
                 if (pmi >= PMI_THRESHOLD && support >= SUPPORT_THRESHOLD && confidence >= CONFIDENCE_THRESHOLD) {
                     //conceptPairFilterMap.put(conceptPairVerb, verb);
-                    conceptPairVerbFilterList.add(conceptPair + " " + verb);
+                    conceptPairVerbFilterList.add(conceptPair + " " + verb + " " + support + " " + confidence + " " + pmi);
                 }
             }
 
